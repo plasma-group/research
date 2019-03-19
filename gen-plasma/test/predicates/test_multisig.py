@@ -1,6 +1,6 @@
 import pytest
 from utils import State
-from predicates.multisig import MultiSigTransitionWitness, MultiSigPredicate
+from predicates.multisig import MultiSigRevocationWitness, MultiSigPredicate
 
 @pytest.fixture
 def multisig_predicate(erc20_plasma_ct):
@@ -44,7 +44,7 @@ def skip_test_submit_dispute_on_deposit(alice, bob, charlie, erc20_plasma_ct, mu
                                  {'recipient': [charlie.address]})
     erc20_plasma_ct.add_commitment([state1_alice_and_bob])  # Add the tx to the first commitment
     # Create witness based on this commitment
-    transition_witness0_alice_and_bob = MultiSigTransitionWitness([alice.address, bob.address], 0)
+    transition_witness0_alice_and_bob = MultiSigRevocationWitness([alice.address, bob.address], 0)
     # Try submitting claim on deposit
     deposit_claim = erc20_plasma_ct.submit_claim(state0_alice_and_bob_deposit)
     # Check the claim was recorded
