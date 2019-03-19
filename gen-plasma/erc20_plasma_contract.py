@@ -67,8 +67,7 @@ class Erc20PlasmaContract:
         earlier_claim = self.claims[earlier_claim_id]
         later_claim = self.claims[later_claim_id]
         # Make sure they overlap
-        assert earlier_claim.commitment.start <= later_claim.commitment.end
-        assert later_claim.commitment.start <= earlier_claim.commitment.end
+        assert max(earlier_claim.commitment.start, later_claim.commitment.start) <= min(earlier_claim.commitment.end, later_claim.commitment.end)
         # Validate that the earlier claim is in fact earlier
         assert earlier_claim.commitment.plasma_block_number < later_claim.commitment.plasma_block_number
         # Make sure the later claim isn't already redeemable
