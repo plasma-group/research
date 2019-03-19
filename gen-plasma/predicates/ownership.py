@@ -11,7 +11,7 @@ class OwnershipPredicate:
         self.parent = parent_settlement_contract
 
     def can_claim(self, commitment, witness):
-        # Anyone can submit a claim
+        # Only the owner can submit a claim
         assert commitment.state.owner == witness
         return True
 
