@@ -10,9 +10,10 @@ class OwnershipPredicate:
     def __init__(self, parent_settlement_contract):
         self.parent = parent_settlement_contract
 
-    def can_claim(self, commitment, witness):
-        # Only the owner can submit a claim
-        assert commitment.state.owner == witness
+    def can_claim(self, commitment, claimability_witness):
+        # Only the owner can submit a claim.
+        # In reality, this will be done in EVM via assert msg.sender == state.parameters.owner
+        assert commitment.state.owner == claimability_witness
         return True
 
     def can_revoke(self, state_id, commitment, revocation_witness):
