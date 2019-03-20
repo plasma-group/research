@@ -25,7 +25,7 @@ class OwnershipPredicate:
         assert self.parent.commitment_chain.validate_commitment(revocation_witness.next_state_commitment,
                                                                 self.parent.address,
                                                                 revocation_witness.inclusion_witness)
-        # Check that the previous owner signed off on the change
+        # Check that the previous owner signed off on the change (mocked--will be hash(next_state_commitment))
         assert commitment.state.parameters.owner == revocation_witness.signature
         # Check that the spend is after the claim state
         assert commitment.plasma_block_number < revocation_witness.next_state_commitment.plasma_block_number
