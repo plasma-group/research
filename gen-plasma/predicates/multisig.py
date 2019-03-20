@@ -24,7 +24,7 @@ class MultiSigPredicate:
                                                                 self.parent.address,
                                                                 revocation_witness.inclusion_witness)
         # Check that all owners signed off on the change
-        assert commitment.state.recipient == revocation_witness.signatures
+        assert commitment.state.parameters.recipient == revocation_witness.signatures
         # Check that the spend is after the claim state
         assert commitment.plasma_block_number < revocation_witness.next_state_commitment.plasma_block_number
         return True
@@ -33,7 +33,7 @@ class MultiSigPredicate:
         # Extract required information from call data
         recipients_sigs, destination = call_data
         # Check that the resolution is signed off on by all parties in the multisig
-        assert recipients_sigs == claim.commitment.state.recipient
+        assert recipients_sigs == claim.commitment.state.parameters.recipient
         # Transfer funds to the recipient
         self.parent.erc20_contract.transferFrom(self, destination, claim.commitment.end - claim.commitment.start)
 
