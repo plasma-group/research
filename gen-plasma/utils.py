@@ -54,16 +54,16 @@ class StateUpdate:
         self.end = end
         self.plasma_block_number = plasma_block_number
 
-class Claim:
+class Exit:
     def __init__(self, state_update, eth_block_redeemable):
         self.state_update = state_update
         self.eth_block_redeemable = eth_block_redeemable
         self.num_challenges = 0
 
 class Challenge:
-    def __init__(self, earlier_claim_id, later_claim_id):
-        self.earlier_claim_id = earlier_claim_id
-        self.later_claim_id = later_claim_id
+    def __init__(self, earlier_exit_id, later_exit_id):
+        self.earlier_exit_id = earlier_exit_id
+        self.later_exit_id = later_exit_id
         self.is_revoked = False
 
 class ClaimQueue:

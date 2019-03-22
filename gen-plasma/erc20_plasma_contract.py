@@ -1,6 +1,6 @@
-from utils import State, Claim, StateUpdate, Challenge
+from utils import State, Exit, StateUpdate, Challenge
 
-class ClaimableRange:
+class exitableRange:
     def __init__(self, start, is_set):
         self.start = start
 
@@ -14,9 +14,9 @@ class Erc20PlasmaContract:
         self.DISPUTE_PERIOD = DISPUTE_PERIOD
         # Datastructures
         self.total_deposited = 0
-        self.claimable_ranges = dict()
+        self.exitable_ranges = dict()
         self.deposits = dict()
-        self.claims = []
+        self.exits = []
         self.challenges = []
 
     def deposit(self, depositor, deposit_amount, predicate, parameters):
@@ -34,86 +34,86 @@ class Erc20PlasmaContract:
         deposit = StateUpdate(initial_state, deposit_start, deposit_end, preceding_plasma_block_number)
         # Store the deposit in case it needs to be exited
         self.deposits[deposit_end] = deposit # technically this dupes the deposit_end as it stands now, so TODO: make deposits not exactly state Updates
-        #  Update our mapping of ranges which can be claimed
-        self.claimable_ranges[deposit_end] = deposit_start # TODO: if there's a claimable range ending at deposit_end already, extend that instead of creating a new one.
+        #  Update our mapping of ranges which can be exited
+        self.exitable_ranges[deposit_end] = deposit_start # TODO: if there's a exitable range ending at deposit_end already, extend that instead of creating a new one.
         # Increment total deposits
         self.total_deposited = deposit_end
         # Return deposit record
         return deposit
 
-    def _construct_claim(self, commitment):
+    def _construct_exit(self, commitment):
         additional_lockup_duration = commitment.state.predicate.get_additional_lockup(commitment.state)
         eth_block_redeemable = self.eth.block_number + self.DISPUTE_PERIOD + additional_lockup_duration
-        return Claim(commitment, eth_block_redeemable)
+        return Exit(commitment, eth_block_redeemable)
 
-    def claim_deposit(self, deposit_end):
+    def exit_deposit(self, deposit_end):
         deposit = self.deposits[deposit_end]
-        claim = self._construct_claim(deposit)
-        self.claims.append(claim)
-        return len(self.claims) - 1
+        exit = self._construct_exit(deposit)
+        self.exits.append(exit)
+        return len(self.exits) - 1
 
-    def claim_commitment(self, commitment, commitment_witness, claimability_witness):
+    def exit_commitment(self, commitment, commitment_witness, exitability_witness):
         assert self.commitment_chain.verify_inclusion(commitment, self.address, commitment_witness)
-        assert commitment.state.predicate.can_initiate_exit(commitment, claimability_witness)
-        claim = self._construct_claim(commitment)
-        self.claims.append(claim)
-        return len(self.claims) - 1
+        assert commitment.state.predicate.can_initiate_exit(commitment, exitability_witness)
+        exit = self._construct_exit(commitment)
+        self.exits.append(exit)
+        return len(self.exits) - 1
 
-    def revoke_claim(self, state_id, claim_id, revocation_witness):
-        claim = self.claims[claim_id]
+    def revoke_exit(self, state_id, exit_id, revocation_witness):
+        exit = self.exits[exit_id]
         # Call can revoke to check if the predicate allows this revocation attempt
-        assert claim.state_update.state.predicate.verify_deprecation(state_id, claim.state_update, revocation_witness)
-        # Delete the claim
-        self.claims[claim_id].is_revoked = True
+        assert exit.state_update.state.predicate.verify_deprecation(state_id, exit.state_update, revocation_witness)
+        # Delete the exit
+        self.exits[exit_id].is_revoked = True
 
     def remove_challenge(self, challenge_id):
         challenge = self.challenges[challenge_id]
-        earlier_claim = self.claims[challenge.earlier_claim_id]
-        assert earlier_claim.is_revoked
-        # All checks have passed, we have an earlier claim that was revoked and the challenge is no longer valid.
-        # Decrement the challenge count on the later claim
-        self.claims[challenge.later_claim_id].num_challenges -= 1
+        earlier_exit = self.exits[challenge.earlier_exit_id]
+        assert earlier_exit.is_revoked
+        # All checks have passed, we have an earlier exit that was revoked and the challenge is no longer valid.
+        # Decrement the challenge count on the later exit
+        self.exits[challenge.later_exit_id].num_challenges -= 1
         # Delete the challenge
         del self.challenges[challenge_id]
 
-    def challenge_claim(self, earlier_claim_id, later_claim_id):
-        earlier_claim = self.claims[earlier_claim_id]
-        later_claim = self.claims[later_claim_id]
+    def challenge_exit(self, earlier_exit_id, later_exit_id):
+        earlier_exit = self.exits[earlier_exit_id]
+        later_exit = self.exits[later_exit_id]
         # Make sure they overlap
-        assert earlier_claim.state_update.start <= later_claim.state_update.end
-        assert later_claim.state_update.start <= earlier_claim.state_update.end
-        # Validate that the earlier claim is in fact earlier
-        assert earlier_claim.state_update.plasma_block_number < later_claim.state_update.plasma_block_number
-        # Make sure the later claim isn't already redeemable
-        assert self.eth.block_number < later_claim.eth_block_redeemable
+        assert earlier_exit.state_update.start <= later_exit.state_update.end
+        assert later_exit.state_update.start <= earlier_exit.state_update.end
+        # Validate that the earlier exit is in fact earlier
+        assert earlier_exit.state_update.plasma_block_number < later_exit.state_update.plasma_block_number
+        # Make sure the later exit isn't already redeemable
+        assert self.eth.block_number < later_exit.eth_block_redeemable
         # Create and record our new challenge
-        new_challenge = Challenge(earlier_claim_id, later_claim_id)
+        new_challenge = Challenge(earlier_exit_id, later_exit_id)
         self.challenges.append(new_challenge)
-        later_claim.num_challenges += 1
-        # If the `eth_block_redeemable` of the earlier claim is longer than later claim, extend the later claim dispute period
-        if later_claim.eth_block_redeemable < earlier_claim.eth_block_redeemable:
-            later_claim.eth_block_redeemable = earlier_claim.eth_block_redeemable
+        later_exit.num_challenges += 1
+        # If the `eth_block_redeemable` of the earlier exit is longer than later exit, extend the later exit dispute period
+        if later_exit.eth_block_redeemable < earlier_exit.eth_block_redeemable:
+            later_exit.eth_block_redeemable = earlier_exit.eth_block_redeemable
         # Return our new challenge object
         return len(self.challenges) - 1
 
-    def redeem_claim(self, claim_id, claimable_range_end):
-        claim = self.claims[claim_id]
-        # Check the claim's eth_block_redeemable has passed
-        assert claim.eth_block_redeemable <= self.eth.block_number
-        # Check that there are no open challenges for the claim
-        assert claim.num_challenges == 0
-        # Make sure that the claimable_range_end is actually in claimable_ranges
-        assert claimable_range_end in self.claimable_ranges
-        # Make sure the claim is within the claimable range
-        assert claim.state_update.start >= self.claimable_ranges[claimable_range_end]
-        assert claim.state_update.end <= claimable_range_end
-        # Update claimable range
+    def redeem_exit(self, exit_id, exitable_range_end):
+        exit = self.exits[exit_id]
+        # Check the exit's eth_block_redeemable has passed
+        assert exit.eth_block_redeemable <= self.eth.block_number
+        # Check that there are no open challenges for the exit
+        assert exit.num_challenges == 0
+        # Make sure that the exitable_range_end is actually in exitable_ranges
+        assert exitable_range_end in self.exitable_ranges
+        # Make sure the exit is within the exitable range
+        assert exit.state_update.start >= self.exitable_ranges[exitable_range_end]
+        assert exit.state_update.end <= exitable_range_end
+        # Update exitable range
         # TODO: delete if these are both equal?
-        if claim.state_update.start != self.claimable_ranges[claimable_range_end]:
-            self.claimable_ranges[claim.state_update.start] = self.claimable_ranges[claimable_range_end]
-        if claim.state_update.end != claimable_range_end:
-            self.claimable_ranges[claimable_range_end] = claim.state_update.end
+        if exit.state_update.start != self.exitable_ranges[exitable_range_end]:
+            self.exitable_ranges[exit.state_update.start] = self.exitable_ranges[exitable_range_end]
+        if exit.state_update.end != exitable_range_end:
+            self.exitable_ranges[exitable_range_end] = exit.state_update.end
         # Approve coins for spending in predicate
-        self.erc20_contract.approve(self.address, claim.state_update.state.predicate, claim.state_update.end - claim.state_update.start)
-        # Finally redeem the claim
-        claim.state_update.state.predicate.finalize_exit(claim)
+        self.erc20_contract.approve(self.address, exit.state_update.state.predicate, exit.state_update.end - exit.state_update.start)
+        # Finally redeem the exit
+        exit.state_update.state.predicate.finalize_exit(exit)

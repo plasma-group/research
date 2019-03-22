@@ -7,7 +7,7 @@ def test_deposit(alice, erc20_ct, erc20_plasma_ct, ownership_predicate):
     assert erc20_ct.balanceOf(alice.address) == 900
     assert erc20_ct.balanceOf(erc20_plasma_ct.address) == 100
     # Assert that we recorded the deposit and incremented total_deposits
-    assert len(erc20_plasma_ct.claimable_ranges) == 1 and isinstance(next(iter(erc20_plasma_ct.claimable_ranges.values())), int)
+    assert len(erc20_plasma_ct.exitable_ranges) == 1 and isinstance(next(iter(erc20_plasma_ct.exitable_ranges.values())), int)
     assert len(erc20_plasma_ct.deposits) == 1 and isinstance(next(iter(erc20_plasma_ct.deposits.values())), StateUpdate)
     assert erc20_plasma_ct.total_deposited == 100
 
