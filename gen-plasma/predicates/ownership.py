@@ -11,7 +11,7 @@ class OwnershipPredicate:
 
     def can_initiate_exit(self, state_update, initiation_witness):
         # Only the owner can submit an exit
-        assert state_update.state.owner == initiation_witness
+        assert state_update.state.owner == initiation_witness # In reality, this will be done in EVM via assert msg.sender == state.parameters.owner
         return True
 
     def verify_deprecation(self, state_id, state_update, deprecation_witness):
@@ -21,7 +21,7 @@ class OwnershipPredicate:
         assert self.parent.state_update_chain.verify_inclusion(deprecation_witness.next_state_update,
                                                                 self.parent.address,
                                                                 deprecation_witness.inclusion_witness)
-        # Check that the previous owner signed off on the change
+        # Check that the previous owner signed off on the change (mocked--will be checkSig(hash(next_state_commitment)))
         assert state_update.state.owner == deprecation_witness.signature
         return True
 
