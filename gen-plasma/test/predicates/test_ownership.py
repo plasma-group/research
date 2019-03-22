@@ -26,7 +26,7 @@ def test_submit_exit_on_state_update(alice, bob, operator, erc20_plasma_ct, owne
     # Check bob's balance!
     assert erc20_plasma_ct.erc20_contract.balanceOf(bob.address) == 1100  # 1100 comes from bob having been sent 100 & already having 1000
 
-def test_revoke_exit_on_deposit(alice, bob, operator, erc20_plasma_ct, ownership_predicate):
+def test_challenge_deprecated_exit_on_deposit(alice, bob, operator, erc20_plasma_ct, ownership_predicate):
     # Deposit and send a tx
     commit0_alice_deposit = erc20_plasma_ct.deposit(alice.address, 100, ownership_predicate, {'owner': alice.address})  # Add deposit
     state_bob_ownership = State(ownership_predicate, {'owner': bob.address})
@@ -39,7 +39,7 @@ def test_revoke_exit_on_deposit(alice, bob, operator, erc20_plasma_ct, ownership
     # Check the exit was recorded
     assert len(erc20_plasma_ct.exits) == 1
     # Now bob revokes the exit with the spend inside the revocation witness
-    erc20_plasma_ct.revoke_exit(10, deposit_exit_id, deprecation_witness0_alice_to_bob)
+    erc20_plasma_ct.challenge_deprecated_exit(10, deposit_exit_id, deprecation_witness0_alice_to_bob)
     # Check the exit was revoked
     assert erc20_plasma_ct.exits[deposit_exit_id].is_revoked
 
@@ -93,7 +93,7 @@ def test_redeem_challenged_exit(alice, mallory, operator, erc20_plasma_ct, owner
     challenge_id = erc20_plasma_ct.challenge_exit(revoked_exit_id, exit_id)
     # This revoked exit is then swiftly canceled by alice
     deprecation_witness0_mallory_to_alice = OwnershipDeprecationWitness(commit1_mallory_to_alice, mallory.address, 'merkle proof')
-    erc20_plasma_ct.revoke_exit(10, revoked_exit_id, deprecation_witness0_mallory_to_alice)
+    erc20_plasma_ct.challenge_deprecated_exit(10, revoked_exit_id, deprecation_witness0_mallory_to_alice)
     # Remove the challenge for the revoked exit
     erc20_plasma_ct.remove_challenge(challenge_id)
     # Increment the eth block number

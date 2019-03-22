@@ -59,7 +59,7 @@ class Erc20PlasmaContract:
         self.exits.append(exit)
         return len(self.exits) - 1
 
-    def revoke_exit(self, state_id, exit_id, revocation_witness):
+    def challenge_deprecated_exit(self, state_id, exit_id, revocation_witness):
         exit = self.exits[exit_id]
         # Call can revoke to check if the predicate allows this revocation attempt
         assert exit.state_update.state.predicate.verify_deprecation(state_id, exit.state_update, revocation_witness)
