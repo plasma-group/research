@@ -10,7 +10,7 @@ class OwnershipPredicate:
         self.parent = parent_plasma_contract
 
     def can_initiate_exit(self, state_update, initiation_witness):
-        # Only the owner can submit a claim
+        # Only the owner can submit an exit
         assert state_update.state.owner == initiation_witness
         return True
 

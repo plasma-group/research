@@ -11,7 +11,7 @@ class MultiSigPredicate:
         self.parent = parent_plasma_contract
 
     def can_initiate_exit(self, commitment, initiation_witness):
-        # For now, anyone can submit a claim
+        # For now, anyone can submit an exit TODO: make this one or multiple of owners
         return True
 
     def verify_deprecation(self, state_id, commitment, revocation_witness):
@@ -25,17 +25,17 @@ class MultiSigPredicate:
                                                                 revocation_witness.inclusion_witness)
         # Check that all owners signed off on the change
         assert commitment.state.recipient == revocation_witness.signatures
-        # Check that the spend is after the claim state
+        # Check that the spend is after the exit state
         assert commitment.plasma_block_number < revocation_witness.next_state_commitment.plasma_block_number
         return True
 
-    def finalize_exit(self, claim):
+    def finalize_exit(self, exit):
         # Extract required information from call data
         recipients_sigs, destination = call_data
         # Check that the resolution is signed off on by all parties in the multisig
-        assert recipients_sigs == claim.commitment.state.recipient
+        assert recipients_sigs == exit.commitment.state.recipient
         # Transfer funds to the recipient
-        self.parent.erc20_contract.transferFrom(self, destination, claim.commitment.end - claim.commitment.start)
+        self.parent.erc20_contract.transferFrom(self, destination, exit.commitment.end - exit.commitment.start)
 
     def get_additional_lockup(self, state):
         return 0
