@@ -18,7 +18,7 @@ class OwnershipPredicate:
         # Check the state_id is in the deprecation_witness state update
         assert deprecation_witness.next_state_update.start <= state_id and deprecation_witness.next_state_update.end > state_id
         # Check inclusion proof for more recent state update
-        assert self.parent.commitment_chain.verify_inclusion(deprecation_witness.next_state_update,
+        assert self.parent.state_update_chain.verify_inclusion(deprecation_witness.next_state_update,
                                                                 self.parent.address,
                                                                 deprecation_witness.inclusion_witness)
         # Check that the previous owner signed off on the change

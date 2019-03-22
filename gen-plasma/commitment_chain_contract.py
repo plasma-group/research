@@ -1,9 +1,9 @@
-''' Commitment Block Structure
+''' state_update Block Structure
 {
-    subject_0: [commitment_0, commitment_1,...commitment_n],
-    subject_1: [commitment_0, commitment_1,...commitment_n],
+    subject_0: [state_update_0, state_update_1,...state_update_n],
+    subject_1: [state_update_0, state_update_1,...state_update_n],
     ...
-    subject_n: [commitment_0, commitment_1,...commitment_n]
+    subject_n: [state_update_0, state_update_1,...state_update_n]
 }
 '''
 
@@ -16,11 +16,11 @@ class CommitmentChainContract:
         assert msg_sender == self.operator
         self.blocks.append(block)
 
-    def verify_inclusion(self, commitment, subject, committment_witness):
+    def verify_inclusion(self, state_update, subject, committment_witness):
         # Note that we are not providing merkle proofs and are instead faking it by storing the full blocks.
-        block = self.blocks[commitment.plasma_block_number]
+        block = self.blocks[state_update.plasma_block_number]
         # Make sure the subject contract address is in fact included in the block.
-        # NOTE: We are mocking the inclusion & so we don't actually use the commitment witness.
+        # NOTE: We are mocking the inclusion & so we don't actually use the state_update witness.
         assert subject in block
-        # Return whether or not this commitment was included
-        return commitment in block[subject]
+        # Return whether or not this state_update was included
+        return state_update in block[subject]

@@ -5,12 +5,12 @@ class exitableRange:
         self.start = start
 
 class Erc20PlasmaContract:
-    def __init__(self, eth, address, erc20_contract, commitment_chain, DISPUTE_PERIOD):
+    def __init__(self, eth, address, erc20_contract, state_update_chain, DISPUTE_PERIOD):
         # Settings
         self.eth = eth
         self.address = address
         self.erc20_contract = erc20_contract
-        self.commitment_chain = commitment_chain
+        self.state_update_chain = state_update_chain
         self.DISPUTE_PERIOD = DISPUTE_PERIOD
         # Datastructures
         self.total_deposited = 0
@@ -24,7 +24,7 @@ class Erc20PlasmaContract:
         # Make the transfer
         self.erc20_contract.transferFrom(depositor, self.address, deposit_amount)
         # Record the deposit first by collecting the preceeding plasma block number
-        preceding_plasma_block_number = len(self.commitment_chain.blocks) - 1
+        preceding_plasma_block_number = len(self.state_update_chain.blocks) - 1
         # Next compute the start and end positions of the deposit
         deposit_start = self.total_deposited
         deposit_end = self.total_deposited + deposit_amount
@@ -41,10 +41,10 @@ class Erc20PlasmaContract:
         # Return deposit record
         return deposit
 
-    def _construct_exit(self, commitment):
-        additional_lockup_duration = commitment.state.predicate.get_additional_lockup(commitment.state)
+    def _construct_exit(self, state_update):
+        additional_lockup_duration = state_update.state.predicate.get_additional_lockup(state_update.state)
         eth_block_redeemable = self.eth.block_number + self.DISPUTE_PERIOD + additional_lockup_duration
-        return Exit(commitment, eth_block_redeemable)
+        return Exit(state_update, eth_block_redeemable)
 
     def exit_deposit(self, deposit_end):
         deposit = self.deposits[deposit_end]
@@ -52,10 +52,10 @@ class Erc20PlasmaContract:
         self.exits.append(exit)
         return len(self.exits) - 1
 
-    def exit_commitment(self, commitment, commitment_witness, exitability_witness):
-        assert self.commitment_chain.verify_inclusion(commitment, self.address, commitment_witness)
-        assert commitment.state.predicate.can_initiate_exit(commitment, exitability_witness)
-        exit = self._construct_exit(commitment)
+    def exit_state_update(self, state_update, state_update_witness, exitability_witness):
+        assert self.state_update_chain.verify_inclusion(state_update, self.address, state_update_witness)
+        assert state_update.state.predicate.can_initiate_exit(state_update, exitability_witness)
+        exit = self._construct_exit(state_update)
         self.exits.append(exit)
         return len(self.exits) - 1
 

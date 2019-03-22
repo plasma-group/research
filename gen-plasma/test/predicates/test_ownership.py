@@ -8,15 +8,15 @@ def test_submit_exit_on_deposit(alice, erc20_plasma_ct, ownership_predicate):
     # Check the exit was recorded
     assert len(erc20_plasma_ct.exits) == 1
 
-def test_submit_exit_on_commitment(alice, bob, operator, erc20_plasma_ct, ownership_predicate):
+def test_submit_exit_on_state_update(alice, bob, operator, erc20_plasma_ct, ownership_predicate):
     # Deposit and send a tx
     commit0_alice_deposit = erc20_plasma_ct.deposit(alice.address, 100, ownership_predicate, {'owner': alice.address})  # Add deposit
     state_bob_ownership = State(ownership_predicate, {'owner': bob.address})
-    commit1_alice_to_bob = StateUpdate(state_bob_ownership, commit0_alice_deposit.start, commit0_alice_deposit.end, 0)  # Create commitment
+    commit1_alice_to_bob = StateUpdate(state_bob_ownership, commit0_alice_deposit.start, commit0_alice_deposit.end, 0)  # Create state_update
     # Add the commit
-    erc20_plasma_ct.commitment_chain.commit_block(operator.address, {erc20_plasma_ct.address: [commit1_alice_to_bob]})
+    erc20_plasma_ct.state_update_chain.commit_block(operator.address, {erc20_plasma_ct.address: [commit1_alice_to_bob]})
     # Try submitting exit
-    exit_id = erc20_plasma_ct.exit_commitment(commit1_alice_to_bob, 'merkle proof', bob.address)
+    exit_id = erc20_plasma_ct.exit_state_update(commit1_alice_to_bob, 'merkle proof', bob.address)
     # Check the exit was recorded
     assert len(erc20_plasma_ct.exits) == 1
     # Now increment the eth block to the redeemable block
@@ -30,9 +30,9 @@ def test_revoke_exit_on_deposit(alice, bob, operator, erc20_plasma_ct, ownership
     # Deposit and send a tx
     commit0_alice_deposit = erc20_plasma_ct.deposit(alice.address, 100, ownership_predicate, {'owner': alice.address})  # Add deposit
     state_bob_ownership = State(ownership_predicate, {'owner': bob.address})
-    commit1_alice_to_bob = StateUpdate(state_bob_ownership, commit0_alice_deposit.start, commit0_alice_deposit.end, 0)  # Create commitment
-    # Add the commitment
-    erc20_plasma_ct.commitment_chain.commit_block(operator.address, {erc20_plasma_ct.address: [commit1_alice_to_bob]})
+    commit1_alice_to_bob = StateUpdate(state_bob_ownership, commit0_alice_deposit.start, commit0_alice_deposit.end, 0)  # Create state_update
+    # Add the state_update
+    erc20_plasma_ct.state_update_chain.commit_block(operator.address, {erc20_plasma_ct.address: [commit1_alice_to_bob]})
     deprecation_witness0_alice_to_bob = OwnershipDeprecationWitness(commit1_alice_to_bob, alice.address, 'merkle proof')
     # Try submitting exit on deposit
     deposit_exit_id = erc20_plasma_ct.exit_deposit(100)
@@ -53,19 +53,19 @@ def test_challenge_exit_with_invalid_state(alice, mallory, operator, erc20_plasm
     invalid_commit1_alice_to_mallory = StateUpdate(state_mallory_ownership,
                                                   commit0_alice_deposit.start,
                                                   commit0_alice_deposit.end,
-                                                  0)  # Create commitment
-    # Add the commitment
-    erc20_plasma_ct.commitment_chain.commit_block(operator.address, {erc20_plasma_ct.address: [invalid_commit1_alice_to_mallory]})
+                                                  0)  # Create state_update
+    # Add the state_update
+    erc20_plasma_ct.state_update_chain.commit_block(operator.address, {erc20_plasma_ct.address: [invalid_commit1_alice_to_mallory]})
     # Submit a exit for the invalid state
-    invalid_commitment_exit_id = erc20_plasma_ct.exit_commitment(invalid_commit1_alice_to_mallory, 'merkle proof', mallory.address)
+    invalid_state_update_exit_id = erc20_plasma_ct.exit_state_update(invalid_commit1_alice_to_mallory, 'merkle proof', mallory.address)
     # Oh no! Alice notices bad behavior and attempts withdrawal of deposit state
     deposit_exit_id = erc20_plasma_ct.exit_deposit(commit0_alice_deposit.end)
     # Alice isn't letting that other exit go through. She challenges it with her deposit!
-    challenge = erc20_plasma_ct.challenge_exit(deposit_exit_id, invalid_commitment_exit_id)
+    challenge = erc20_plasma_ct.challenge_exit(deposit_exit_id, invalid_state_update_exit_id)
     # Verify that the challenge was recorded
     assert challenge is not None and len(erc20_plasma_ct.challenges) == 1
     # Fast forward in time until the eth block allows the exit to be redeemable
-    erc20_plasma_ct.eth.block_number = erc20_plasma_ct.exits[invalid_commitment_exit_id].eth_block_redeemable
+    erc20_plasma_ct.eth.block_number = erc20_plasma_ct.exits[invalid_state_update_exit_id].eth_block_redeemable
     # Mallory attempts and fails to withdraw because there's another exit with priority
     try:
         erc20_plasma_ct.redeem_exit(mallory.address, invalid_commit1_alice_to_mallory.end)
@@ -81,13 +81,13 @@ def test_challenge_exit_with_invalid_state(alice, mallory, operator, erc20_plasm
 def test_redeem_challenged_exit(alice, mallory, operator, erc20_plasma_ct, ownership_predicate):
     # Deposit and then submit an invalid challenge
     commit0_mallory_deposit = erc20_plasma_ct.deposit(mallory.address, 100, ownership_predicate, {'owner': mallory.address})  # Add deposit
-    # Create a new state & commitment for alice ownership
+    # Create a new state & state_update for alice ownership
     state_alice_ownership = State(ownership_predicate, {'owner': alice.address})
-    commit1_mallory_to_alice = StateUpdate(state_alice_ownership, commit0_mallory_deposit.start, commit0_mallory_deposit.end, 0)  # Create commitment
+    commit1_mallory_to_alice = StateUpdate(state_alice_ownership, commit0_mallory_deposit.start, commit0_mallory_deposit.end, 0)  # Create state_update
     # Add the commit
-    erc20_plasma_ct.commitment_chain.commit_block(operator.address, {erc20_plasma_ct.address: [commit1_mallory_to_alice]})
+    erc20_plasma_ct.state_update_chain.commit_block(operator.address, {erc20_plasma_ct.address: [commit1_mallory_to_alice]})
     # Now alice wants to withdraw, so submit a new exit on the funds
-    exit_id = erc20_plasma_ct.exit_commitment(commit1_mallory_to_alice, 'merkle proof', alice.address)
+    exit_id = erc20_plasma_ct.exit_state_update(commit1_mallory_to_alice, 'merkle proof', alice.address)
     # Uh oh! Mallory decides to withdraw and challenge the exit
     revoked_exit_id = erc20_plasma_ct.exit_deposit(commit0_mallory_deposit.end)
     challenge_id = erc20_plasma_ct.challenge_exit(revoked_exit_id, exit_id)
