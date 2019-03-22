@@ -80,8 +80,7 @@ class Erc20PlasmaContract:
         earlier_exit = self.exits[earlier_exit_id]
         later_exit = self.exits[later_exit_id]
         # Make sure they overlap
-        assert earlier_exit.state_update.start <= later_exit.state_update.end
-        assert later_exit.state_update.start <= earlier_exit.state_update.end
+        assert max(earlier_claim.commitment.start, later_claim.commitment.start) <= min(earlier_claim.commitment.end, later_claim.commitment.end)
         # Validate that the earlier exit is in fact earlier
         assert earlier_exit.state_update.plasma_block_number < later_exit.state_update.plasma_block_number
         # Make sure the later exit isn't already redeemable
@@ -93,7 +92,7 @@ class Erc20PlasmaContract:
         # If the `eth_block_redeemable` of the earlier exit is longer than later exit, extend the later exit dispute period
         if later_exit.eth_block_redeemable < earlier_exit.eth_block_redeemable:
             later_exit.eth_block_redeemable = earlier_exit.eth_block_redeemable
-        # Return our new challenge object
+        # Return our new challenge ID
         return len(self.challenges) - 1
 
     def finalize_exit(self, exit_id, exitable_range_end):
