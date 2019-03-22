@@ -22,7 +22,7 @@ def test_submit_exit_on_state_update(alice, bob, operator, erc20_plasma_ct, owne
     # Now increment the eth block to the redeemable block
     erc20_plasma_ct.eth.block_number = erc20_plasma_ct.exits[exit_id].eth_block_redeemable
     # Finally try withdrawing the money!
-    erc20_plasma_ct.redeem_exit(exit_id, commit1_alice_to_bob.end)
+    erc20_plasma_ct.finalize_exit(exit_id, commit1_alice_to_bob.end)
     # Check bob's balance!
     assert erc20_plasma_ct.erc20_contract.balanceOf(bob.address) == 1100  # 1100 comes from bob having been sent 100 & already having 1000
 
@@ -68,13 +68,13 @@ def test_challenge_exit_with_invalid_state(alice, mallory, operator, erc20_plasm
     erc20_plasma_ct.eth.block_number = erc20_plasma_ct.exits[invalid_state_update_exit_id].eth_block_redeemable
     # Mallory attempts and fails to withdraw because there's another exit with priority
     try:
-        erc20_plasma_ct.redeem_exit(mallory.address, invalid_commit1_alice_to_mallory.end)
+        erc20_plasma_ct.finalize_exit(mallory.address, invalid_commit1_alice_to_mallory.end)
         throws = False
     except Exception:
         throws = True
     assert throws
     # Now instead alice withdraws
-    erc20_plasma_ct.redeem_exit(deposit_exit_id, erc20_plasma_ct.exits[deposit_exit_id].state_update.end)
+    erc20_plasma_ct.finalize_exit(deposit_exit_id, erc20_plasma_ct.exits[deposit_exit_id].state_update.end)
     # Check that alice was sent her money!
     assert erc20_plasma_ct.erc20_contract.balanceOf(alice.address) == 1000
 
@@ -99,6 +99,6 @@ def test_redeem_challenged_exit(alice, mallory, operator, erc20_plasma_ct, owner
     # Increment the eth block number
     erc20_plasma_ct.eth.block_number = erc20_plasma_ct.exits[exit_id].eth_block_redeemable
     # Now alice can withdraw!
-    erc20_plasma_ct.redeem_exit(exit_id, erc20_plasma_ct.exits[exit_id].state_update.end)
+    erc20_plasma_ct.finalize_exit(exit_id, erc20_plasma_ct.exits[exit_id].state_update.end)
     # Check that alice was sent her money!
     assert erc20_plasma_ct.erc20_contract.balanceOf(alice.address) == 1100

@@ -96,7 +96,7 @@ class Erc20PlasmaContract:
         # Return our new challenge object
         return len(self.challenges) - 1
 
-    def redeem_exit(self, exit_id, exitable_range_end):
+    def finalize_exit(self, exit_id, exitable_range_end):
         exit = self.exits[exit_id]
         # Check the exit's eth_block_redeemable has passed
         assert exit.eth_block_redeemable <= self.eth.block_number
