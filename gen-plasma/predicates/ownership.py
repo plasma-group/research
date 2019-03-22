@@ -6,8 +6,8 @@ class OwnershipDeprecationWitness:
 
 class OwnershipPredicate:
 
-    def __init__(self, parent_settlement_contract):
-        self.parent = parent_settlement_contract
+    def __init__(self, parent_plasma_contract):
+        self.parent = parent_plasma_contract
 
     def can_initiate_exit(self, state_update, initiation_witness):
         # Only the owner can submit a claim
@@ -25,9 +25,9 @@ class OwnershipPredicate:
         assert state_update.state.owner == deprecation_witness.signature
         return True
 
-    def finalize_exit(self, claim, call_data=None):
+    def finalize_exit(self, exit):
         # Transfer funds to the owner
-        self.parent.erc20_contract.transferFrom(self, claim.state_update.state.owner, claim.state_update.end - claim.state_update.start)
+        self.parent.erc20_contract.transferFrom(self, exit.state_update.state.owner, exit.state_update.end - exit.state_update.start)
 
     def get_additional_lockup(self, state):
         return 0

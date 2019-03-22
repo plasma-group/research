@@ -7,8 +7,8 @@ class MultiSigDeprecationWitness:
 class MultiSigPredicate:
     dispute_duration = 10
 
-    def __init__(self, parent_settlement_contract):
-        self.parent = parent_settlement_contract
+    def __init__(self, parent_plasma_contract):
+        self.parent = parent_plasma_contract
 
     def can_initiate_exit(self, commitment, initiation_witness):
         # For now, anyone can submit a claim
@@ -29,7 +29,7 @@ class MultiSigPredicate:
         assert commitment.plasma_block_number < revocation_witness.next_state_commitment.plasma_block_number
         return True
 
-    def finalize_exit(self, claim, call_data=None):
+    def finalize_exit(self, claim):
         # Extract required information from call data
         recipients_sigs, destination = call_data
         # Check that the resolution is signed off on by all parties in the multisig
