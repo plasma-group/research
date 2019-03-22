@@ -46,7 +46,7 @@ class State:
         for key in parameters:
             setattr(self, key, parameters[key])
 
-class Commitment:
+class StateUpdate:
     def __init__(self, state, start, end, plasma_block_number):
         assert isinstance(state, State)
         self.state = state
@@ -55,8 +55,8 @@ class Commitment:
         self.plasma_block_number = plasma_block_number
 
 class Claim:
-    def __init__(self, commitment, eth_block_redeemable):
-        self.commitment = commitment
+    def __init__(self, state_update, eth_block_redeemable):
+        self.state_update = state_update
         self.eth_block_redeemable = eth_block_redeemable
         self.num_challenges = 0
 

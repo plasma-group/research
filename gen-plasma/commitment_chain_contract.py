@@ -16,7 +16,7 @@ class CommitmentChainContract:
         assert msg_sender == self.operator
         self.blocks.append(block)
 
-    def validate_commitment(self, commitment, subject, committment_witness):
+    def verify_inclusion(self, commitment, subject, committment_witness):
         # Note that we are not providing merkle proofs and are instead faking it by storing the full blocks.
         block = self.blocks[commitment.plasma_block_number]
         # Make sure the subject contract address is in fact included in the block.

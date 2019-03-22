@@ -1,4 +1,4 @@
-class MultiSigRevocationWitness:
+class MultiSigDeprecationWitness:
     def __init__(self, next_state_commitment, signatures, inclusion_witness):
         self.next_state_commitment = next_state_commitment
         self.signatures = signatures
@@ -10,17 +10,17 @@ class MultiSigPredicate:
     def __init__(self, parent_settlement_contract):
         self.parent = parent_settlement_contract
 
-    def can_claim(self, commitment, witness):
-        # Anyone can submit a claim
+    def can_initiate_exit(self, commitment, initiation_witness):
+        # For now, anyone can submit a claim
         return True
 
-    def can_revoke(self, state_id, commitment, revocation_witness):
+    def verify_deprecation(self, state_id, commitment, revocation_witness):
         # Check the state_id is in the commitment
         assert commitment.start <= state_id and commitment.end > state_id
         # Check the state_id is in the revocation_witness commitment
         assert revocation_witness.next_state_commitment.start <= state_id and revocation_witness.next_state_commitment.end > state_id
         # Check inclusion proof
-        assert self.parent.commitment_chain.validate_commitment(revocation_witness.next_state_commitment,
+        assert self.parent.commitment_chain.verify_inclusion(revocation_witness.next_state_commitment,
                                                                 self.parent.address,
                                                                 revocation_witness.inclusion_witness)
         # Check that all owners signed off on the change
@@ -29,7 +29,7 @@ class MultiSigPredicate:
         assert commitment.plasma_block_number < revocation_witness.next_state_commitment.plasma_block_number
         return True
 
-    def claim_redeemed(self, claim, call_data=None):
+    def finalize_exit(self, claim, call_data=None):
         # Extract required information from call data
         recipients_sigs, destination = call_data
         # Check that the resolution is signed off on by all parties in the multisig

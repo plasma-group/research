@@ -1,4 +1,4 @@
-from utils import State, Claim, Commitment, Challenge
+from utils import State, Claim, StateUpdate, Challenge
 
 class ClaimableRange:
     def __init__(self, start, is_set):
@@ -13,8 +13,9 @@ class Erc20PlasmaContract:
         self.commitment_chain = commitment_chain
         self.DISPUTE_PERIOD = DISPUTE_PERIOD
         # Datastructures
-        self.total_deposits = 0
+        self.total_deposited = 0
         self.claimable_ranges = dict()
+        self.deposits = dict()
         self.claims = []
         self.challenges = []
 
@@ -25,16 +26,18 @@ class Erc20PlasmaContract:
         # Record the deposit first by collecting the preceeding plasma block number
         preceding_plasma_block_number = len(self.commitment_chain.blocks) - 1
         # Next compute the start and end positions of the deposit
-        deposit_start = self.total_deposits
-        deposit_end = self.total_deposits + deposit_amount
+        deposit_start = self.total_deposited
+        deposit_end = self.total_deposited + deposit_amount
         # Create the initial state which we will record to in this deposit
         initial_state = State(predicate, parameters)
         # Create the depoisit object
-        deposit = Commitment(initial_state, deposit_start, deposit_end, preceding_plasma_block_number)
-        # And store the deposit in our mapping of ranges which can be claimed
-        self.claimable_ranges[deposit_end] = deposit
+        deposit = StateUpdate(initial_state, deposit_start, deposit_end, preceding_plasma_block_number)
+        # Store the deposit in case it needs to be exited
+        self.deposits[deposit_end] = deposit # technically this dupes the deposit_end as it stands now, so TODO: make deposits not exactly state Updates
+        #  Update our mapping of ranges which can be claimed
+        self.claimable_ranges[deposit_end] = deposit_start # TODO: if there's a claimable range ending at deposit_end already, extend that instead of creating a new one.
         # Increment total deposits
-        self.total_deposits += deposit_amount
+        self.total_deposited = deposit_end
         # Return deposit record
         return deposit
 
@@ -44,14 +47,14 @@ class Erc20PlasmaContract:
         return Claim(commitment, eth_block_redeemable)
 
     def claim_deposit(self, deposit_end):
-        deposit = self.claimable_ranges[deposit_end]
+        deposit = self.deposits[deposit_end]
         claim = self._construct_claim(deposit)
         self.claims.append(claim)
         return len(self.claims) - 1
 
     def claim_commitment(self, commitment, commitment_witness, claimability_witness):
-        assert self.commitment_chain.validate_commitment(commitment, self.address, commitment_witness)
-        assert commitment.state.predicate.can_claim(commitment, claimability_witness)
+        assert self.commitment_chain.verify_inclusion(commitment, self.address, commitment_witness)
+        assert commitment.state.predicate.can_initiate_exit(commitment, claimability_witness)
         claim = self._construct_claim(commitment)
         self.claims.append(claim)
         return len(self.claims) - 1
@@ -59,7 +62,7 @@ class Erc20PlasmaContract:
     def revoke_claim(self, state_id, claim_id, revocation_witness):
         claim = self.claims[claim_id]
         # Call can revoke to check if the predicate allows this revocation attempt
-        assert claim.commitment.state.predicate.can_revoke(state_id, claim.commitment, revocation_witness)
+        assert claim.state_update.state.predicate.verify_deprecation(state_id, claim.state_update, revocation_witness)
         # Delete the claim
         self.claims[claim_id].is_revoked = True
 
@@ -77,10 +80,10 @@ class Erc20PlasmaContract:
         earlier_claim = self.claims[earlier_claim_id]
         later_claim = self.claims[later_claim_id]
         # Make sure they overlap
-        assert earlier_claim.commitment.start <= later_claim.commitment.end
-        assert later_claim.commitment.start <= earlier_claim.commitment.end
+        assert earlier_claim.state_update.start <= later_claim.state_update.end
+        assert later_claim.state_update.start <= earlier_claim.state_update.end
         # Validate that the earlier claim is in fact earlier
-        assert earlier_claim.commitment.plasma_block_number < later_claim.commitment.plasma_block_number
+        assert earlier_claim.state_update.plasma_block_number < later_claim.state_update.plasma_block_number
         # Make sure the later claim isn't already redeemable
         assert self.eth.block_number < later_claim.eth_block_redeemable
         # Create and record our new challenge
@@ -102,14 +105,15 @@ class Erc20PlasmaContract:
         # Make sure that the claimable_range_end is actually in claimable_ranges
         assert claimable_range_end in self.claimable_ranges
         # Make sure the claim is within the claimable range
-        assert claim.commitment.start >= self.claimable_ranges[claimable_range_end]
-        assert claim.commitment.end <= claimable_range_end
+        assert claim.state_update.start >= self.claimable_ranges[claimable_range_end]
+        assert claim.state_update.end <= claimable_range_end
         # Update claimable range
-        if claim.commitment.start != self.claimable_ranges[claimable_range_end]:
-            self.claimable_ranges[claim.commitment.start] = self.claimable_ranges[claimable_range_end]
-        if claim.commitment.end != claimable_range_end:
-            self.claimable_ranges[claimable_range_end] = claim.commitment.end
+        # TODO: delete if these are both equal?
+        if claim.state_update.start != self.claimable_ranges[claimable_range_end]:
+            self.claimable_ranges[claim.state_update.start] = self.claimable_ranges[claimable_range_end]
+        if claim.state_update.end != claimable_range_end:
+            self.claimable_ranges[claimable_range_end] = claim.state_update.end
         # Approve coins for spending in predicate
-        self.erc20_contract.approve(self.address, claim.commitment.state.predicate, claim.commitment.end - claim.commitment.start)
+        self.erc20_contract.approve(self.address, claim.state_update.state.predicate, claim.state_update.end - claim.state_update.start)
         # Finally redeem the claim
-        claim.commitment.state.predicate.claim_redeemed(claim)
+        claim.state_update.state.predicate.finalize_exit(claim)
